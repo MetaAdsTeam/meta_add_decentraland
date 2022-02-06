@@ -1,9 +1,8 @@
-.vscode
-bin
 export
 images
 node_modules
 
 .dclignore
 Dockerfile
-*.json
+package.json
+package-lock.json
