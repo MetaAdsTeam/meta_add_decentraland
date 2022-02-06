@@ -1,8 +1,4 @@
 export
-images
 node_modules
 
 .dclignore
-Dockerfile
-package.json
-package-lock.json
