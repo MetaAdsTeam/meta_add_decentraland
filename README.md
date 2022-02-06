@@ -1,3 +1,3 @@
-1. npm install -g decentraland
+1. npm i -g decentraland
 2. npm i decentraland-ecs@latest
-3. npm install @dcl/ecs-scene-utils -B
+3. npm i @dcl/ecs-scene-utils -B
