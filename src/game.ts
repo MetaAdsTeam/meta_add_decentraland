@@ -1,13 +1,43 @@
 import * as utils from '@dcl/ecs-scene-utils'
 
+var update_date: any = null
+
+var screen = new Entity()
+screen.addComponent(new PlaneShape())
+
+var scale = new Vector3(8, 4.5, 1)
+var position = new Vector3(15, 1 + scale.y / 2, 4 + scale.x / 2)
+var rotation = new Quaternion(360, 1, 360, 1)
+
+screen.addComponent(
+    new Transform({
+        position: position,
+        scale: scale,
+        rotation: rotation,
+    })
+)
+
+var myVideoClip: VideoClip
+var myVideoTexture: VideoTexture
+var myImageTexture: Texture
+var myMaterial: Material
+
+myMaterial = new Material()
+myMaterial.roughness = 1
+myMaterial.specularIntensity = 0
+myMaterial.metallic = 0
+
 
 function create_display(stream: any){
     if (stream.is_image){
         myImageTexture = new Texture(stream.url)
-
         myMaterial.albedoTexture = myImageTexture
-
-        video_rotation = new Quaternion(360, 1, 360, 1)
+        
+        if (myVideoTexture && myVideoTexture.playing){
+            myVideoTexture.pause()
+        }
+        
+        rotation = new Quaternion(360, 1, 360, 1)
     }
     else {
         myVideoClip = new VideoClip(stream.url)
@@ -18,20 +48,17 @@ function create_display(stream: any){
         
         myVideoTexture.play()
         
-        video_rotation = new Quaternion(0, -1, 0, 1)
-    }    
-
-    screen = new Entity()
-    screen.addComponent(new PlaneShape())
-    screen.addComponent(
+        rotation = new Quaternion(0, -1, 0, 1)
+    }
+    
+    screen.addComponentOrReplace(
         new Transform({
-            position: video_position,
-            scale: video_scale,
-            rotation: video_rotation,
+            position: position,
+            scale: scale,
+            rotation: rotation,
         })
     )
-    screen.addComponent(myMaterial)
-    engine.addEntity(screen)
+    screen.addComponentOrReplace(myMaterial)
 }
 
 
@@ -41,6 +68,14 @@ function DateWithoutTimeZone(string_date: string) {
     var timestamp = date.getTime() - date.getTimezoneOffset() * 60000
     var correctDate = new Date(timestamp)
     return correctDate
+}
+
+
+function get_default_image_json(){
+    return {
+        'is_image': true,
+        'url': 'https://metaads.team/data/default.png'
+    }
 }
 
 
@@ -66,44 +101,41 @@ async function get_data() {
             'Accept-Language': 'en;q=1'
         }
     )
+
     let message = json.msg
-    if (message && message == 'There are no stream now'){
-        log('Nothing to show at the moment')
+    if (message){
+        // 404 
+        if (message == 'There are no stream now'){
+            update_date = null
+            json = get_default_image_json()
+            log('Nothing to show at the moment')
+        }
+        // 200
+        if (message == 'ok'){
+            update_date = DateWithoutTimeZone(json.to_time)
+            log((json.is_image ? 'Image' : 'Video') + ' was got')
+        }
     }
+    // nothing was returned
     else {
-        update_date = DateWithoutTimeZone(json.to_time)
-        create_display(json)
+        update_date = null
+        json = get_default_image_json()
+        log('API doesn\'t respond')
     }
+    create_display(json)
 }
-
-
-var myVideoClip: VideoClip
-var myVideoTexture: VideoTexture
-var myImageTexture: Texture
-var myMaterial: Material
-var screen: Entity
-
-var video_scale = new Vector3(8, 4.5, 1)
-var video_position = new Vector3(15, 1 + video_scale.y / 2, 4 + video_scale.x / 2)
-var video_rotation = null
-
-var update_date: any = null
-
-myMaterial = new Material()
-myMaterial.roughness = 1
-myMaterial.specularIntensity = 0
-myMaterial.metallic = 0
 
 
 let checker = new Entity()
 engine.addEntity(checker)
 checker.addComponent(
-  new utils.Interval(5000, () => {
-    var now = new Date();
-    if (update_date == null || update_date < now){
-        executeTask(async () => {
-            await get_data()
-        })
-    }
-  })
+    new utils.Interval(5000, () => {
+        let now = new Date();
+        if (update_date == null || update_date < now){
+            executeTask(async () => {
+                await get_data()
+            })
+        }
+    })
 )
+engine.addEntity(screen)
