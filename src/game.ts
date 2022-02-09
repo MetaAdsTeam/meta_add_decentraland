@@ -62,7 +62,7 @@ function create_display(stream: any){
 }
 
 
-function DateWithoutTimeZone(string_date: string) {
+function date_without_timezone(string_date: string) {
     let date = new Date(string_date)
     if (date == null) return date
     var timestamp = date.getTime() - date.getTimezoneOffset() * 60000
@@ -83,23 +83,6 @@ async function get_data() {
     let json = await utils.sendRequest(
         'https://metaads.team/tornado/adspot/id/1/stream',
         'GET',
-        {
-            'Host': 'metaads.team',
-            'Connection': 'keep-alive',
-            'Cache-Control': 'max-age=0',
-            'sec-ch-ua': '" Not A;Brand";v="99", "Chromium";v="96", "Yandex";v="22"',
-            'sec-ch-ua-mobile': '?0',
-            'sec-ch-ua-platform': '"Windows"',
-            'Upgrade-Insecure-Requests': '1',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.116 YaBrowser/22.1.1.1544 Yowser/2.5 Safari/537.3',
-            'Accept': '*/*',
-            'Sec-Fetch-Site': 'none',
-            'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-User': '?1',
-            'Sec-Fetch-Dest': 'document',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Accept-Language': 'en;q=1'
-        }
     )
 
     let message = json.msg
@@ -112,7 +95,7 @@ async function get_data() {
         }
         // 200
         if (message == 'ok'){
-            update_date = DateWithoutTimeZone(json.to_time)
+            update_date = date_without_timezone(json.to_time)
             log((json.is_image ? 'Image' : 'Video') + ' was got')
         }
     }
