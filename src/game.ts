@@ -1,64 +1,83 @@
 import * as utils from '@dcl/ecs-scene-utils'
 
-var update_date: any = null
+var amount_of_screens = 3
 
-var screen = new Entity()
-screen.addComponent(new PlaneShape())
+var screens: Array<Entity> = []
 
 var scale = new Vector3(8, 4.5, 1)
-var position = new Vector3(15, 1 + scale.y / 2, 4 + scale.x / 2)
-var rotation = new Quaternion(360, 1, 360, 1)
 
-screen.addComponent(
-    new Transform({
-        position: position,
-        scale: scale,
-        rotation: rotation,
-    })
-)
+var positions: Array<Vector3> = [
+    new Vector3(15, 1 + scale.y / 2, 4 + scale.x / 2),
+    new Vector3(8, 1 + scale.y / 2, 15),
+    new Vector3(1, 1 + scale.y / 2, 4 + scale.x / 2),
+]
+var image_rotations: Array<Quaternion> = [
+    new Quaternion(360, 1, 360, 1),
+    new Quaternion(0, -1, -360, 1),
+    new Quaternion(-360, -1, 360, -1),
+]
+var video_rotations: Array<Quaternion> = [
+    new Quaternion(0, -1, 0, 1),
+    new Quaternion(0, 1, 0, 0),
+    new Quaternion(0, 1, 0, 1),
+]
 
-var myVideoClip: VideoClip
-var myVideoTexture: VideoTexture
-var myImageTexture: Texture
-var myMaterial: Material
+var video_textures: Array<VideoTexture> = []
+var materials: Array<Material> = []
 
-myMaterial = new Material()
-myMaterial.roughness = 1
-myMaterial.specularIntensity = 0
-myMaterial.metallic = 0
+var update_dates: Array<null | Date> = []
+
+for (let i = 0; i < amount_of_screens; i++){
+    screens.push(new Entity())
+    screens[i].addComponent(new PlaneShape())
+    screens[i].addComponent(
+        new Transform({            
+            scale: scale,
+            position: positions[i],
+            rotation: image_rotations[i],
+        })
+    )
+    
+    materials.push(new Material())
+    materials[i].roughness = 1
+    materials[i].specularIntensity = 0
+    materials[i].metallic = 0
+
+    update_dates.push(null)
+
+    video_textures.push(new VideoTexture(new VideoClip('')))
+}
 
 
-function create_display(stream: any){
+function create_display(stream: any, num_of_screen: number){
+    let rotation: Quaternion
     if (stream.is_image){
-        myImageTexture = new Texture(stream.url)
-        myMaterial.albedoTexture = myImageTexture
+        materials[num_of_screen].albedoTexture = new Texture(stream.url)
         
-        if (myVideoTexture && myVideoTexture.playing){
-            myVideoTexture.pause()
+        if (video_textures[num_of_screen] && video_textures[num_of_screen].playing){
+            video_textures[num_of_screen].pause()
         }
         
-        rotation = new Quaternion(360, 1, 360, 1)
+        rotation = image_rotations[num_of_screen]
     }
     else {
-        myVideoClip = new VideoClip(stream.url)
-
-        myVideoTexture = new VideoTexture(myVideoClip)
-        myVideoTexture.loop = true
-        myMaterial.albedoTexture = myVideoTexture
+        video_textures[num_of_screen] = new VideoTexture(new VideoClip(stream.url)) 
+        video_textures[num_of_screen].loop = true
+        materials[num_of_screen].albedoTexture = video_textures[num_of_screen]
         
-        myVideoTexture.play()
+        video_textures[num_of_screen].play()
         
-        rotation = new Quaternion(0, -1, 0, 1)
+        rotation = video_rotations[num_of_screen]
     }
     
-    screen.addComponentOrReplace(
-        new Transform({
-            position: position,
+    screens[num_of_screen].addComponentOrReplace(
+        new Transform({            
             scale: scale,
+            position: positions[num_of_screen],
             rotation: rotation,
         })
     )
-    screen.addComponentOrReplace(myMaterial)
+    screens[num_of_screen].addComponentOrReplace(materials[num_of_screen])
 }
 
 
@@ -79,33 +98,31 @@ function get_default_image_json(){
 }
 
 
-async function get_data() {
-    let json = await utils.sendRequest(
-        'https://metaads.team/tornado/adspot/id/1/stream',
-        'GET',
-    )
-
+async function get_data(num_of_screen: number) {
+    let url = "https://metaads.team/tornado/adspot/id/" + (num_of_screen + 1).toString() + "/stream"
+    let json = await utils.sendRequest(url, 'GET')
+    
     let message = json.msg
     if (message){
         // 404 
         if (message == 'There are no stream now'){
-            update_date = null
+            update_dates[num_of_screen] = null
             json = get_default_image_json()
-            log('Nothing to show at the moment')
+            log(num_of_screen+1 + ' -- Nothing to show at the moment')
         }
         // 200
         if (message == 'ok'){
-            update_date = date_without_timezone(json.to_time)
-            log((json.is_image ? 'Image' : 'Video') + ' was got')
+            update_dates[num_of_screen] = date_without_timezone(json.to_time)
+            log(num_of_screen+1 + (json.is_image ? 'Image' : 'Video') + ' was got')
         }
     }
     // nothing was returned
     else {
-        update_date = null
+        update_dates[num_of_screen] = null
         json = get_default_image_json()
-        log('API doesn\'t respond')
+        log(num_of_screen+1 + 'API doesn\'t respond')
     }
-    create_display(json)
+    create_display(json, num_of_screen)
 }
 
 
@@ -114,11 +131,16 @@ engine.addEntity(checker)
 checker.addComponent(
     new utils.Interval(5000, () => {
         let now = new Date();
-        if (update_date == null || update_date < now){
-            executeTask(async () => {
-                await get_data()
-            })
+        for (let i = 0; i < amount_of_screens; i++){
+            if (update_dates[i] == null || update_dates[i] < now){
+                executeTask(async () => {
+                    await get_data(i)
+                })
+            }
         }
     })
 )
-engine.addEntity(screen)
+
+for (let i = 0; i < amount_of_screens; i++){
+    engine.addEntity(screens[i])
+}
