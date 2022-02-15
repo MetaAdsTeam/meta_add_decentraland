@@ -3,6 +3,7 @@ import * as utils from '@dcl/ecs-scene-utils'
 var amount_of_screens = 3
 
 var screens: Array<Entity> = []
+var numbers_of_screens: Array<number> = [1, 5, 6]
 
 var scale = new Vector3(8, 4.5, 1)
 
@@ -99,7 +100,8 @@ function get_default_image_json(){
 
 
 async function get_data(num_of_screen: number) {
-    let url = "https://metaads.team/tornado/adspot/id/" + (num_of_screen + 1).toString() + "/stream"
+    let url = "https://metaads.team/tornado/adspot/id/" + numbers_of_screens[num_of_screen].toString() + "/stream"
+    log(url)
     let json = await utils.sendRequest(url, 'GET')
     
     let message = json.msg
@@ -108,12 +110,12 @@ async function get_data(num_of_screen: number) {
         if (message == 'There are no stream now'){
             update_dates[num_of_screen] = null
             json = get_default_image_json()
-            log(num_of_screen+1 + ' -- Nothing to show at the moment')
+            log(num_of_screen+1 + ' -- ' + 'Nothing to show at the moment')
         }
         // 200
         if (message == 'ok'){
             update_dates[num_of_screen] = date_without_timezone(json.to_time)
-            log(num_of_screen+1 + (json.is_image ? 'Image' : 'Video') + ' was got')
+            log(num_of_screen+1 + ' -- ' + (json.is_image ? 'Image' : 'Video') + ' was got')
         }
     }
     // nothing was returned
