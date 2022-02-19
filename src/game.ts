@@ -52,12 +52,13 @@ for (let i = 0; i < amount_of_screens; i++){
 
 function create_display(stream: any, num_of_screen: number){
     let rotation: Quaternion
+
+    if (video_textures[num_of_screen] && video_textures[num_of_screen].playing){
+        video_textures[num_of_screen].pause()
+    }
+
     if (stream.is_image){
         materials[num_of_screen].albedoTexture = new Texture(stream.url)
-        
-        if (video_textures[num_of_screen] && video_textures[num_of_screen].playing){
-            video_textures[num_of_screen].pause()
-        }
         
         rotation = image_rotations[num_of_screen]
     }
